@@ -21,11 +21,21 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
+
+      - name: Install Python dependencies for test MVP
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r test/requirements.txt
 
       - name: Install dependencies
         run: npm ci
@@ -41,12 +51,28 @@ jobs:
         env:
           AGP_WEB_BASE: /AGP/app/
 
+      - name: Build static test MVP
+        run: python test/scripts/build_pruebas.py
+
       - name: Compose Pages artifact
         run: |
           rm -rf pages
-          mkdir -p pages/app
+          mkdir -p pages/app pages/pruebas
           cp -r docs/dist/. pages/
           cp -r apps/web/dist/. pages/app/
+          cp test/index.html pages/pruebas/index.html
+          cp test/styles.css pages/pruebas/styles.css
+          cp test/app.js pages/pruebas/app.js
+          cp -r test/data pages/pruebas/data
+          cp -r test/reports pages/pruebas/reports
+
+      - name: Inject runtime API config
+        run: |
+          cat <<'EOF' > pages/app/app-config.js
+          window.__AGP_RUNTIME_CONFIG__ = {
+            apiUrl: "${{ vars.AGP_PUBLIC_API_URL }}"
+          };
+          EOF
 
       - name: Configure Pages
         uses: actions/configure-pages@v5
