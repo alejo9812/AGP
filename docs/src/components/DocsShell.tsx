@@ -42,7 +42,7 @@ export function DocsShell() {
             </a>
             <a
               className="rounded-md border border-emerald-300/40 px-3 py-2 text-sm font-medium text-emerald-100 transition hover:bg-emerald-300/10"
-              href="http://localhost:5173/dashboard"
+              href="https://alejo9812.github.io/AGP/app/#/dashboard"
               target="_blank"
               rel="noreferrer"
             >

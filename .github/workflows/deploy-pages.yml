@@ -36,13 +36,25 @@ jobs:
       - name: Build docs
         run: npm run build --workspace @agp/docs
 
+      - name: Build web app for Pages subpath
+        run: npm run build --workspace @agp/web
+        env:
+          AGP_WEB_BASE: /AGP/app/
+
+      - name: Compose Pages artifact
+        run: |
+          rm -rf pages
+          mkdir -p pages/app
+          cp -r docs/dist/. pages/
+          cp -r apps/web/dist/. pages/app/
+
       - name: Configure Pages
         uses: actions/configure-pages@v5
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: docs/dist
+          path: pages
 
   deploy:
     environment:

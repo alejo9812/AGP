@@ -1,7 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import { Toaster } from "sonner";
-import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
+import { BrowserRouter, HashRouter, Navigate, Route, Routes } from "react-router-dom";
 
 import { AppShell } from "@/components/layout/AppShell";
 import { AuditScreen } from "@/pages/audit-screen";
@@ -17,11 +17,12 @@ import { ScanScreen } from "@/pages/scan-screen";
 import { SettingsScreen } from "@/pages/settings-screen";
 
 const queryClient = new QueryClient();
+const Router = import.meta.env.PROD ? HashRouter : BrowserRouter;
 
 export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <BrowserRouter>
+      <Router>
         <Routes>
           <Route element={<AppShell />} path="/">
             <Route element={<Navigate replace to="/dashboard" />} index />
@@ -39,7 +40,7 @@ export default function App() {
             <Route element={<Navigate replace to="/dashboard" />} path="*" />
           </Route>
         </Routes>
-      </BrowserRouter>
+      </Router>
       <Toaster position="top-right" richColors />
       <ReactQueryDevtools initialIsOpen={false} />
     </QueryClientProvider>

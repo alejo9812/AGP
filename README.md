@@ -18,6 +18,7 @@ AGP opera una bodega con miles de piezas almacenadas y un proceso que hoy depend
 - Repositorio: <https://github.com/alejo9812/AGP>
 - Docs publicos: <https://alejo9812.github.io/AGP/#/warehouse-grouping-prototype>
 - Frontend blueprint: <https://alejo9812.github.io/AGP/#/frontend-blueprint>
+- App operativa publica: <https://alejo9812.github.io/AGP/app/#/dashboard>
 - App operativa local: `http://localhost:5173/dashboard`
 - Docs locales: `http://localhost:4173/AGP/#/warehouse-grouping-prototype`
 

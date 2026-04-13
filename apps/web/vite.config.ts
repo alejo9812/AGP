@@ -5,8 +5,11 @@ import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import { VitePWA } from "vite-plugin-pwa";
 
+const configuredBase = process.env.AGP_WEB_BASE ?? "/";
+const base = configuredBase.endsWith("/") ? configuredBase : `${configuredBase}/`;
+
 export default defineConfig({
-  base: "/",
+  base,
   plugins: [
     react(),
     tailwindcss(),
@@ -20,16 +23,16 @@ export default defineConfig({
         theme_color: "#1f6f61",
         background_color: "#f1f6f4",
         display: "standalone",
-        start_url: "/",
+        start_url: base,
         icons: [
           {
-            src: "/icons/icon-192.svg",
+            src: `${base}icons/icon-192.svg`,
             sizes: "192x192",
             type: "image/svg+xml",
             purpose: "any",
           },
           {
-            src: "/icons/icon-512.svg",
+            src: `${base}icons/icon-512.svg`,
             sizes: "512x512",
             type: "image/svg+xml",
             purpose: "any maskable",
