@@ -13,12 +13,35 @@ Todo el runtime del MVP vive dentro de `test/`. El subproyecto reutiliza el core
 3. limpia y normaliza el inventario
 4. aplica las reglas de negocio de compatibilidad y priorizacion
 5. genera artefactos fijos para la pagina estatica:
-   - `data/resultados.json`
-   - `data/resumen.json`
-   - `data/resultados.js`
-   - `data/resumen.js`
+   - `data/agp_dataset.json`
+   - `data/agp_dataset.js`
    - `reports/informe_agp.pdf`
 6. deja una pagina lista para abrir localmente o publicar en GitHub Pages
+
+## Contrato publico del dataset
+
+El frontend consume un unico dataset fijo:
+
+- `data/agp_dataset.json`: archivo canonico para descarga e integracion
+- `data/agp_dataset.js`: el mismo contenido, precargado para que la pagina muestre la informacion apenas abre, incluso desde `file://`
+
+Estructura principal:
+
+```json
+{
+  "generated_at": "...",
+  "generated_at_display": "...",
+  "source_file_name": "Mock_Data.xlsx",
+  "download_paths": {
+    "dataset_json": "./data/agp_dataset.json",
+    "dataset_js": "./data/agp_dataset.js",
+    "pdf_report": "./reports/informe_agp.pdf"
+  },
+  "default_active_record_key": "...",
+  "summary": { "...": "KPIs, conteos y listas ejecutivas" },
+  "records": [{ "...": "filas enriquecidas del Excel" }]
+}
+```
 
 ## Estructura
 
@@ -30,10 +53,8 @@ test/
   Mock_Data.xlsx
   input/
   data/
-    resultados.json
-    resumen.json
-    resultados.js
-    resumen.js
+    agp_dataset.json
+    agp_dataset.js
   reports/
     informe_agp.pdf
   scripts/
@@ -49,7 +70,7 @@ test/
 
 ## Reutilizacion desde el proyecto principal
 
-Este subproyecto sigue siendo independiente, pero se apoyó en estas piezas existentes:
+Este subproyecto sigue siendo independiente, pero se apoyo en estas piezas existentes:
 
 - `test/src/core/*`: carga de Excel, limpieza, reglas, recomendador y resumenes
 - `test/src/reports/pdf_report.py`: generacion del PDF ejecutivo
@@ -108,7 +129,7 @@ Abre:
 test/index.html
 ```
 
-La pagina intenta leer `data/*.json` por `fetch`. Si el navegador bloquea `file://`, usa automaticamente los fallbacks `data/resultados.js` y `data/resumen.js`.
+La pagina precarga `data/agp_dataset.js`, asi que la tabla y los KPIs aparecen al entrar sin depender de `fetch`.
 
 ### Opcion 2: servidor local simple
 
@@ -128,14 +149,14 @@ http://localhost:4174/
 1. reemplaza el archivo en `test/input/` o en la raiz de `test/`
 2. ejecuta `test/scripts/build_pruebas.py`
 3. valida que se regeneraron:
-   - `test/data/resultados.json`
-   - `test/data/resumen.json`
+   - `test/data/agp_dataset.json`
+   - `test/data/agp_dataset.js`
    - `test/reports/informe_agp.pdf`
 4. abre `test/index.html`
 
 ## Publicacion en GitHub Pages
 
-El workflow `.github/workflows/deploy-pages.yml` construye este MVP y publica solo los archivos estaticos necesarios en:
+El workflow [`.github/workflows/deploy-pages.yml`](../.github/workflows/deploy-pages.yml) publica este MVP en:
 
 `/AGP/pruebas`
 
@@ -144,8 +165,9 @@ Archivos publicados:
 - `index.html`
 - `styles.css`
 - `app.js`
-- `data/`
-- `reports/`
+- `data/agp_dataset.json`
+- `data/agp_dataset.js`
+- `reports/informe_agp.pdf`
 
 ## Legacy
 
@@ -163,4 +185,4 @@ Las pruebas cubren:
 - busqueda del Excel segun el orden `input/` -> raiz de `test/`
 - reglas de recomendacion
 - validacion de columnas
-- exportador estatico con generacion de JSON, JS fallback y PDF
+- exportador estatico con generacion del dataset unico y el PDF

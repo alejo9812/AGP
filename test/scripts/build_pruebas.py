@@ -41,8 +41,8 @@ def main() -> int:
 
         print("[OK] MVP estatico generado")
         print(f"  Excel: {artifacts.source_file}")
-        print(f"  Resultados JSON: {artifacts.paths.results_json}")
-        print(f"  Resumen JSON: {artifacts.paths.summary_json}")
+        print(f"  Dataset JSON: {artifacts.paths.dataset_json}")
+        print(f"  Dataset JS: {artifacts.paths.dataset_js}")
         print(f"  PDF: {artifacts.paths.pdf_report}")
         print(f"  Registros: {len(artifacts.results_payload)}")
         print(f"  Completables: {artifacts.summary_payload['kpis']['completables']}")

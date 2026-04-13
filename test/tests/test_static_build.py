@@ -58,22 +58,31 @@ def test_static_build_generates_fixed_artifacts_and_public_payloads(tmp_path: Pa
     )
     dataframe.to_excel(excel_path, index=False)
 
+    for legacy_name in ("resultados.json", "resumen.json", "resultados.js", "resumen.js"):
+        (tmp_path / "data" / legacy_name).parent.mkdir(parents=True, exist_ok=True)
+        (tmp_path / "data" / legacy_name).write_text("legacy", encoding="utf-8")
+
     artifacts = build_static_site(target_root=tmp_path)
 
-    assert artifacts.paths.results_json.exists()
-    assert artifacts.paths.summary_json.exists()
-    assert artifacts.paths.results_js.exists()
-    assert artifacts.paths.summary_js.exists()
+    assert artifacts.paths.dataset_json.exists()
+    assert artifacts.paths.dataset_js.exists()
     assert artifacts.paths.pdf_report.exists()
 
-    results_payload = json.loads(artifacts.paths.results_json.read_text(encoding="utf-8"))
-    summary_payload = json.loads(artifacts.paths.summary_json.read_text(encoding="utf-8"))
+    dataset_payload = json.loads(artifacts.paths.dataset_json.read_text(encoding="utf-8"))
+    results_payload = dataset_payload["records"]
+    summary_payload = dataset_payload["summary"]
 
     assert len(results_payload) == 3
+    assert dataset_payload["source_file_name"] == "inventory.xlsx"
+    assert dataset_payload["default_active_record_key"] == results_payload[0]["record_key"]
     assert summary_payload["source_file_name"] == "inventory.xlsx"
     assert summary_payload["kpis"]["total_inventory"] == 3
     assert summary_payload["kpis"]["completables"] == 1
+    assert summary_payload["download_paths"]["dataset_json"] == "./data/agp_dataset.json"
     assert summary_payload["download_paths"]["pdf_report"] == "./reports/informe_agp.pdf"
+
+    for legacy_name in ("resultados.json", "resumen.json", "resultados.js", "resumen.js"):
+        assert not (tmp_path / "data" / legacy_name).exists()
 
     receiver = next(item for item in results_payload if item["order_id"] == "ORD-1")
     manual = next(item for item in results_payload if item["order_id"] == "ORD-3")
@@ -131,3 +140,4 @@ def test_static_build_prefers_input_directory_over_root_excel(tmp_path: Path) ->
 
     assert artifacts.source_file.name == "preferred.xlsx"
     assert artifacts.summary_payload["source_file_name"] == "preferred.xlsx"
+    assert artifacts.dataset_payload["source_file_name"] == "preferred.xlsx"

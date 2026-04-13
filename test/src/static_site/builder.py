@@ -17,11 +17,15 @@ from src.core.validator import validate_required_columns
 from src.reports.pdf_report import generate_pdf_report
 from src.utils.paths import PREFERRED_INPUT_DIR, ROOT_DIR, STATIC_DATA_DIR, STATIC_REPORTS_DIR
 
-RESULTS_JSON_NAME = "resultados.json"
-SUMMARY_JSON_NAME = "resumen.json"
-RESULTS_JS_NAME = "resultados.js"
-SUMMARY_JS_NAME = "resumen.js"
+DATASET_JSON_NAME = "agp_dataset.json"
+DATASET_JS_NAME = "agp_dataset.js"
 PDF_REPORT_NAME = "informe_agp.pdf"
+LEGACY_DATASET_FILES = (
+    "resultados.json",
+    "resumen.json",
+    "resultados.js",
+    "resumen.js",
+)
 
 ORIGINAL_FIELDS = {
     "Original_ID": "id",
@@ -42,10 +46,8 @@ ORIGINAL_FIELDS = {
 class StaticBuildPaths:
     data_dir: Path
     reports_dir: Path
-    results_json: Path
-    summary_json: Path
-    results_js: Path
-    summary_js: Path
+    dataset_json: Path
+    dataset_js: Path
     pdf_report: Path
 
 
@@ -53,6 +55,7 @@ class StaticBuildPaths:
 class StaticBuildArtifacts:
     source_file: Path
     paths: StaticBuildPaths
+    dataset_payload: dict[str, Any]
     summary_payload: dict[str, Any]
     results_payload: list[dict[str, Any]]
     quality_payload: list[dict[str, Any]]
@@ -121,10 +124,8 @@ def _build_paths(target_root: Path) -> StaticBuildPaths:
     return StaticBuildPaths(
         data_dir=data_dir,
         reports_dir=reports_dir,
-        results_json=data_dir / RESULTS_JSON_NAME,
-        summary_json=data_dir / SUMMARY_JSON_NAME,
-        results_js=data_dir / RESULTS_JS_NAME,
-        summary_js=data_dir / SUMMARY_JS_NAME,
+        dataset_json=data_dir / DATASET_JSON_NAME,
+        dataset_js=data_dir / DATASET_JS_NAME,
         pdf_report=reports_dir / PDF_REPORT_NAME,
     )
 
@@ -321,10 +322,10 @@ def _build_summary_payload(
         "generated_at": generated_at,
         "generated_at_display": _display_datetime(generated_at),
         "source_file_name": source_file.name,
-        "source_file": str(source_file.resolve()),
+        "source_file": source_file.name,
         "download_paths": {
-            "resultados_json": f"./{STATIC_DATA_DIR.name}/{RESULTS_JSON_NAME}",
-            "resumen_json": f"./{STATIC_DATA_DIR.name}/{SUMMARY_JSON_NAME}",
+            "dataset_json": f"./{STATIC_DATA_DIR.name}/{DATASET_JSON_NAME}",
+            "dataset_js": f"./{STATIC_DATA_DIR.name}/{DATASET_JS_NAME}",
             "pdf_report": f"./{STATIC_REPORTS_DIR.name}/{PDF_REPORT_NAME}",
         },
         "kpis": {
@@ -388,17 +389,36 @@ def _build_summary_payload(
     }
 
 
+def _build_dataset_payload(summary_payload: dict[str, Any], results_payload: list[dict[str, Any]]) -> dict[str, Any]:
+    return {
+        "generated_at": summary_payload.get("generated_at"),
+        "generated_at_display": summary_payload.get("generated_at_display"),
+        "source_file_name": summary_payload.get("source_file_name"),
+        "download_paths": summary_payload.get("download_paths", {}),
+        "default_active_record_key": results_payload[0]["record_key"] if results_payload else None,
+        "summary": summary_payload,
+        "records": results_payload,
+    }
+
+
 def _write_json(path: Path, payload: Any) -> None:
-    path.write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
+    path.write_text(json.dumps(payload, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
 
 
 def _write_js_assignment(path: Path, property_name: str, payload: Any) -> None:
     script = [
         "window.__AGP_PRUEBAS__ = window.__AGP_PRUEBAS__ || {};",
-        f"window.__AGP_PRUEBAS__.{property_name} = {json.dumps(payload, ensure_ascii=False)};",
+        f"window.__AGP_PRUEBAS__.{property_name} = {json.dumps(payload, ensure_ascii=False, separators=(',', ':'))};",
         "",
     ]
     path.write_text("\n".join(script), encoding="utf-8")
+
+
+def _remove_legacy_data_artifacts(data_dir: Path) -> None:
+    for legacy_name in LEGACY_DATASET_FILES:
+        legacy_path = data_dir / legacy_name
+        if legacy_path.exists():
+            legacy_path.unlink()
 
 
 def build_static_site(source_file: Path | None = None, target_root: Path | None = None) -> StaticBuildArtifacts:
@@ -421,15 +441,16 @@ def build_static_site(source_file: Path | None = None, target_root: Path | None 
         for row in detail_df.to_dict(orient="records")
     ]
     summary_payload = _build_summary_payload(summary, quality_df, resolved_source)
+    dataset_payload = _build_dataset_payload(summary_payload, results_payload)
 
-    _write_json(paths.results_json, results_payload)
-    _write_json(paths.summary_json, summary_payload)
-    _write_js_assignment(paths.results_js, "resultados", results_payload)
-    _write_js_assignment(paths.summary_js, "resumen", summary_payload)
+    _write_json(paths.dataset_json, dataset_payload)
+    _write_js_assignment(paths.dataset_js, "dataset", dataset_payload)
+    _remove_legacy_data_artifacts(paths.data_dir)
 
     return StaticBuildArtifacts(
         source_file=resolved_source,
         paths=paths,
+        dataset_payload=dataset_payload,
         summary_payload=summary_payload,
         results_payload=results_payload,
         quality_payload=summary_payload["quality_metrics"],

@@ -1,4 +1,5 @@
 const state = {
+  dataset: null,
   summary: null,
   records: [],
   filteredRecords: [],
@@ -34,26 +35,40 @@ const tableColumns = [
 
 document.addEventListener("DOMContentLoaded", () => {
   bindEvents();
-  loadData();
+  loadDataset();
 });
 
-async function loadData() {
+async function loadDataset() {
   try {
-    const [summary, results] = await Promise.all([
-      loadPayload("./data/resumen.json", "resumen"),
-      loadPayload("./data/resultados.json", "resultados"),
-    ]);
+    const preloadedDataset = window.__AGP_PRUEBAS__?.dataset;
+    if (preloadedDataset) {
+      applyDataset(preloadedDataset);
+      return;
+    }
 
-    state.summary = summary;
-    state.records = Array.isArray(results) ? results : [];
-    state.filteredRecords = [...state.records];
-    state.activeKey = state.records[0]?.record_key ?? null;
-
-    populateFilters();
-    renderAll();
+    const dataset = await loadPayload("./data/agp_dataset.json", "dataset");
+    applyDataset(dataset);
   } catch (error) {
     renderFatalError(error);
   }
+}
+
+function applyDataset(dataset) {
+  const summary = dataset?.summary;
+  const records = Array.isArray(dataset?.records) ? dataset.records : [];
+
+  if (!summary) {
+    throw new Error("El dataset estatico no incluye el bloque summary.");
+  }
+
+  state.dataset = dataset;
+  state.summary = summary;
+  state.records = records;
+  state.filteredRecords = [...state.records];
+  state.activeKey = dataset?.default_active_record_key ?? state.records[0]?.record_key ?? null;
+
+  populateFilters();
+  renderAll();
 }
 
 async function loadPayload(path, fallbackKey) {
@@ -185,6 +200,14 @@ function renderHeader() {
 
   document.getElementById("meta-source-file").textContent = state.summary.source_file_name ?? "-";
   document.getElementById("meta-generated-at").textContent = state.summary.generated_at_display ?? "-";
+  document.getElementById("download-dataset").setAttribute(
+    "href",
+    state.summary.download_paths?.dataset_json ?? "./data/agp_dataset.json",
+  );
+  document.getElementById("download-pdf").setAttribute(
+    "href",
+    state.summary.download_paths?.pdf_report ?? "./reports/informe_agp.pdf",
+  );
   document.getElementById("summary-note").textContent = [
     `${formatInteger(state.summary.kpis?.total_inventory)} registros analizados`,
     `${formatInteger(state.summary.oldest_days_stored)} dias maximos en bodega`,
@@ -669,7 +692,7 @@ function renderFatalError(error) {
           <p class="section-eyebrow">Error de carga</p>
           <h1 style="margin-top: 10px;">No se pudieron cargar los artefactos estaticos.</h1>
           <p style="line-height: 1.6;">${escapeHtml(error?.message ?? "Error desconocido")}</p>
-          <p style="line-height: 1.6;">Ejecuta <code>python test/scripts/build_pruebas.py</code> para regenerar <code>data/</code> y <code>reports/</code>.</p>
+          <p style="line-height: 1.6;">Ejecuta <code>python test/scripts/build_pruebas.py</code> para regenerar <code>data/agp_dataset.json</code>, <code>data/agp_dataset.js</code> y <code>reports/</code>.</p>
         </section>
       </div>
     </main>
