@@ -16,11 +16,11 @@ AGP opera una bodega con miles de piezas almacenadas y un proceso que hoy depend
 ## Enlaces rapidos
 
 - Repositorio: <https://github.com/alejo9812/AGP>
-- Docs publicos: <https://alejo9812.github.io/AGP/#/warehouse-grouping-prototype>
-- Frontend blueprint: <https://alejo9812.github.io/AGP/#/frontend-blueprint>
+- Docs publicos: <https://alejo9812.github.io/AGP/>
+- Plan tecnico: <https://alejo9812.github.io/AGP/#/warehouse-grouping-prototype>
 - App operativa publica: <https://alejo9812.github.io/AGP/app/#/dashboard>
 - App operativa local: `http://localhost:5173/dashboard`
-- Docs locales: `http://localhost:4173/AGP/#/warehouse-grouping-prototype`
+- Docs locales: `http://localhost:4173/AGP/`
 
 ## Monorepo
 
@@ -57,7 +57,7 @@ AGP opera una bodega con miles de piezas almacenadas y un proceso que hoy depend
 El contenido del otro chat ya se aterriza en `docs/` como dos vistas publicas:
 
 - `#/warehouse-grouping-prototype`: problema, hallazgos del Excel, viabilidad, arquitectura, modelo de datos, reglas del motor, rutas API, fases, pruebas y supuestos.
-- `#/frontend-blueprint`: base visual y arquitectonica del frontend, mapa de pantallas, roles, navegacion y decisiones UX.
+- `/`: base visual y arquitectonica del frontend, mapa de pantallas, roles, navegacion y decisiones UX.
 
 ## Quick start
 
@@ -105,7 +105,7 @@ npm run dev:docs
 Luego abre:
 
 - `http://localhost:5173/dashboard` para la app operativa.
-- `http://localhost:4173/AGP/#/warehouse-grouping-prototype` para la documentacion.
+- `http://localhost:4173/AGP/` para el frontend blueprint y `http://localhost:4173/AGP/#/warehouse-grouping-prototype` para el plan tecnico.
 
 ## Scripts utiles
 
@@ -118,7 +118,7 @@ Luego abre:
 
 ## Despliegue
 
-- `docs/` se publica en GitHub Pages por GitHub Actions con rutas hash para `warehouse-grouping-prototype` y `frontend-blueprint`.
+- `docs/` se publica en GitHub Pages por GitHub Actions con `frontend blueprint` en raiz (`/AGP/`) y `plan tecnico` en `#/warehouse-grouping-prototype`.
 - `apps/web/` se construye como SPA estatica y puede publicarse en Vercel, Netlify o GitHub Pages separada.
 - `apps/api/` esta preparado para desplegarse en Render con PostgreSQL gestionado o Supabase.
 

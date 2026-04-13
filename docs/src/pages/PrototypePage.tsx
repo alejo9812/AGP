@@ -1,5 +1,3 @@
-import { Link } from "react-router-dom";
-
 import { MermaidDiagram } from "@/components/MermaidDiagram";
 import {
   algorithmSteps,
@@ -42,9 +40,9 @@ export function PrototypePage() {
             >
               Ver repositorio
             </a>
-            <Link className="rounded-lg border border-white/20 px-5 py-3 font-semibold text-white" to="/frontend-blueprint">
+            <a className="rounded-lg border border-white/20 px-5 py-3 font-semibold text-white" href="/AGP/">
               Ir al frontend blueprint
-            </Link>
+            </a>
           </div>
         </div>
       </section>

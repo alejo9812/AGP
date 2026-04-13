@@ -2,7 +2,6 @@ import { NavLink, Outlet } from "react-router-dom";
 
 const navItems = [
   { label: "Plan tecnico", to: "/warehouse-grouping-prototype" },
-  { label: "Frontend blueprint", to: "/frontend-blueprint" },
 ];
 
 function navClassName(isActive: boolean) {
@@ -18,7 +17,7 @@ export function DocsShell() {
       <header className="sticky top-0 z-30 border-b border-white/10 bg-[#081311]/90 backdrop-blur">
         <div className="mx-auto flex max-w-7xl flex-col gap-4 px-5 py-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
-            <a className="text-sm font-semibold tracking-[0.18em] text-emerald-200" href="#/warehouse-grouping-prototype">
+            <a className="text-sm font-semibold tracking-[0.18em] text-emerald-200" href="/AGP/">
               AGP WAREHOUSE
             </a>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-300">
@@ -32,6 +31,12 @@ export function DocsShell() {
                 {item.label}
               </NavLink>
             ))}
+            <a
+              className="rounded-md px-3 py-2 text-sm font-medium text-slate-300 transition hover:bg-white/5 hover:text-white"
+              href="/AGP/"
+            >
+              Frontend blueprint
+            </a>
             <a
               className="rounded-md border border-white/15 px-3 py-2 text-sm font-medium text-white transition hover:bg-white/5"
               href="https://github.com/alejo9812/AGP"
@@ -63,7 +68,7 @@ export function DocsShell() {
             <a className="hover:text-white" href="#/warehouse-grouping-prototype">
               Plan tecnico
             </a>
-            <a className="hover:text-white" href="#/frontend-blueprint">
+            <a className="hover:text-white" href="/AGP/">
               Frontend blueprint
             </a>
             <a className="hover:text-white" href="https://github.com/alejo9812/AGP" target="_blank" rel="noreferrer">
