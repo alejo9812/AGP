@@ -1,0 +1,45 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Node dependencies
+        run: npm ci
+
+      - name: Install Python dependencies
+        run: python -m pip install -r apps/api/requirements.txt
+
+      - name: Build shared package
+        run: npm run build --workspace @agp/shared
+
+      - name: Lint frontend workspaces
+        run: npm run lint
+
+      - name: Test API
+        run: python -m pytest apps/api/tests
+
+      - name: Test web
+        run: npm run test:web
+
+      - name: Build docs and web
+        run: npm run build

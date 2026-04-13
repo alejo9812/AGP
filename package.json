@@ -1,0 +1,21 @@
+{
+  "name": "agp-warehouse-grouping",
+  "private": true,
+  "version": "0.1.0",
+  "workspaces": [
+    "docs",
+    "apps/web",
+    "packages/shared"
+  ],
+  "scripts": {
+    "build": "npm run build --workspace @agp/shared && npm run build --workspace @agp/docs && npm run build --workspace @agp/web",
+    "lint": "npm run lint --workspace @agp/docs && npm run lint --workspace @agp/web",
+    "test": "npm run test:web && npm run test:api",
+    "test:web": "npm run test --workspace @agp/web",
+    "test:api": ".venv\\\\Scripts\\\\python.exe -m pytest apps/api/tests",
+    "dev:docs": "npm run dev --workspace @agp/docs -- --host 0.0.0.0 --port 4173",
+    "dev:web": "npm run dev --workspace @agp/web -- --host 0.0.0.0 --port 5173",
+    "dev:api": ".venv\\\\Scripts\\\\python.exe -m uvicorn app.main:app --app-dir apps/api --reload --host 0.0.0.0 --port 8000",
+    "typecheck": "npm run typecheck --workspace @agp/docs && npm run typecheck --workspace @agp/web"
+  }
+}
