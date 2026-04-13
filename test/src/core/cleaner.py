@@ -58,21 +58,21 @@ def _coerce_numeric(series: pd.Series, fill_value: float = 0.0) -> pd.Series:
 def _build_reason_list(row: pd.Series) -> list[str]:
     reasons: list[str] = []
     if row["IsFreeStock"]:
-        reasons.append("Customer vacío: se trata como stock libre.")
+        reasons.append("Customer vacio: se trata como stock libre.")
     if row["MissingVehicle"]:
-        reasons.append("Vehicle vacío: requiere revisión manual.")
+        reasons.append("Vehicle vacio: requiere revision manual.")
     if row["MissingProduct"]:
-        reasons.append("Product vacío: requiere revisión manual.")
+        reasons.append("Product vacio: requiere revision manual.")
     if row["InvalidSetStatus"]:
-        reasons.append("SetStatus inválido: se excluye de agrupación automática.")
+        reasons.append("SetStatus invalido: se excluye de agrupacion automatica.")
     if row["DuplicateID"]:
-        reasons.append("ID duplicado: requiere validación manual.")
+        reasons.append("ID duplicado: requiere validacion manual.")
     if row["DuplicateOrderID"]:
-        reasons.append("OrderID duplicado: requiere validación manual.")
+        reasons.append("OrderID duplicado: requiere validacion manual.")
     if row["DuplicateSerial"]:
-        reasons.append("Serial duplicado: requiere validación manual.")
+        reasons.append("Serial duplicado: requiere validacion manual.")
     if row["InvalidCreated"]:
-        reasons.append("Created inválido: se conserva vacío para revisión.")
+        reasons.append("Created invalido: se conserva vacio para revision.")
     return reasons
 
 
@@ -133,7 +133,7 @@ def clean_inventory_data(raw_df: pd.DataFrame) -> pd.DataFrame:
     cleaned["ReviewReasons"] = cleaned.apply(_build_reason_list, axis=1).map(" | ".join)
 
     cleaned["CustomerDisplay"] = cleaned["Customer"].fillna("Stock libre")
-    cleaned["VehicleDisplay"] = cleaned["Vehicle"].fillna("Revisión manual")
+    cleaned["VehicleDisplay"] = cleaned["Vehicle"].fillna("Revision manual")
     cleaned["ProductDisplay"] = cleaned["Product"].fillna("Sin producto")
     cleaned["CreatedDisplay"] = cleaned["Created"].dt.strftime("%Y-%m-%d").fillna("")
 

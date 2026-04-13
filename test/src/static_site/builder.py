@@ -264,10 +264,13 @@ def _build_result_record(row: dict[str, Any], match_info: dict[str, Any] | None)
         "set_status": set_status,
         "set_status_label": set_status_label,
         "decision_code": _json_scalar(row.get("decision_code")),
+        "decision_label": _json_scalar(row.get("decision_label")) or _json_scalar(row.get("AvailabilityType")) or "",
         "availability_status": _json_scalar(row.get("AvailabilityType")) or "",
         "recommendation": _json_scalar(row.get("Recommendation")) or "",
         "candidate_match_record_key": _json_scalar(row.get("CandidateRecordKey")),
         "candidate_match_orderid": _json_scalar(row.get("CandidateOrderID")),
+        "candidate_match_type": candidate_source,
+        "candidate_match_type_label": candidate_source_label,
         "candidate_source": candidate_source,
         "candidate_source_label": candidate_source_label,
         "decision_reason": _json_scalar(row.get("DecisionReason")) or "",
@@ -277,6 +280,8 @@ def _build_result_record(row: dict[str, Any], match_info: dict[str, Any] | None)
         "is_free_stock": _json_bool(row.get("IsFreeStock")),
         "completable": _json_bool(row.get("Completable")),
         "requires_fabrication": _json_bool(row.get("RequiresFabrication")),
+        "requires_manual_review": _json_bool(row.get("requires_manual_review") if "requires_manual_review" in row else row.get("NeedsManualReview")),
+        "should_manufacture": _json_bool(row.get("should_manufacture") if "should_manufacture" in row else row.get("RequiresFabrication")),
         "needs_manual_review": _json_bool(row.get("NeedsManualReview")),
         "missing_vehicle": _json_bool(row.get("MissingVehicle")),
         "missing_product": _json_bool(row.get("MissingProduct")),
@@ -285,6 +290,7 @@ def _build_result_record(row: dict[str, Any], match_info: dict[str, Any] | None)
         "duplicate_id": _json_bool(row.get("DuplicateID")),
         "duplicate_order_id": _json_bool(row.get("DuplicateOrderID")),
         "duplicate_serial": _json_bool(row.get("DuplicateSerial")),
+        "priority_score": _json_scalar(row.get("priority_score"), empty_to_none=False),
         "additional_candidate_count": additional_candidate_count,
         "incomplete_candidate_count": incomplete_candidate_count,
         "same_customer_candidate_count": same_customer_candidate_count,
@@ -323,6 +329,8 @@ def _build_summary_payload(
         "generated_at_display": _display_datetime(generated_at),
         "source_file_name": source_file.name,
         "source_file": source_file.name,
+        "executive_headline": _json_scalar(summary.get("executive_headline")) or "",
+        "executive_highlights": summary.get("executive_highlights") or [],
         "download_paths": {
             "dataset_json": f"./{STATIC_DATA_DIR.name}/{DATASET_JSON_NAME}",
             "dataset_js": f"./{STATIC_DATA_DIR.name}/{DATASET_JS_NAME}",
@@ -337,6 +345,48 @@ def _build_summary_payload(
             "completables": _json_int(summary.get("completable_total")),
             "requieren_fabricacion": _json_int(summary.get("requires_fabrication_total")),
             "revision_manual": _json_int(summary.get("manual_review_total")),
+            "antiguedad_maxima": _json_int(summary.get("oldest_days_stored")),
+            "antiguedad_promedio": float(summary.get("average_days_stored") or 0),
+            "porcentaje_reduccion_potencial": float(summary.get("inventory_reduction_opportunity_percentage") or 0),
+        },
+        "kpi_groups": {
+            "executive": [
+                {"label": "Inventario total", "value": _json_int(summary.get("total_records")), "unit": "registros"},
+                {"label": "Pedidos incompletos", "value": _json_int(summary.get("incomplete_total")), "unit": "registros"},
+                {"label": "Pedidos completables", "value": _json_int(summary.get("completable_total")), "unit": "registros"},
+                {"label": "Requieren fabricacion", "value": _json_int(summary.get("requires_fabrication_total")), "unit": "registros"},
+                {"label": "Stock libre", "value": _json_int(summary.get("free_stock_total")), "unit": "registros"},
+                {"label": "Antiguedad maxima", "value": _json_int(summary.get("oldest_days_stored")), "unit": "dias"},
+                {"label": "Antiguedad promedio", "value": float(summary.get("average_days_stored") or 0), "unit": "dias"},
+                {
+                    "label": "Reduccion potencial sobre incompletos",
+                    "value": float(summary.get("inventory_reduction_opportunity_percentage") or 0),
+                    "unit": "%",
+                },
+            ],
+            "operational": [
+                {"label": "Matches Additional", "value": _json_int((summary.get("match_type_counts") or {}).get("Adicional compatible"))},
+                {"label": "Matches Incomplete", "value": _json_int((summary.get("match_type_counts") or {}).get("Pedido incompleto compatible"))},
+                {"label": "Matches stock libre", "value": _json_int((summary.get("match_type_counts") or {}).get("Stock libre compatible"))},
+                {"label": "Revision manual", "value": _json_int(summary.get("manual_review_total"))},
+                {"label": "Aptos para agrupacion", "value": _json_int(summary.get("auto_groupable_total"))},
+                {"label": "Cobertura de stock libre", "value": float(summary.get("stock_free_coverage_percentage") or 0), "unit": "%"},
+            ],
+            "quality": [
+                {"label": "Customer vacios", "value": _json_int(next((row["count"] for row in summary.get("quality_issue_rows", []) if row["label"] == "Customer vacios"), 0))},
+                {"label": "Vehicle vacios", "value": _json_int(next((row["count"] for row in summary.get("quality_issue_rows", []) if row["label"] == "Vehicle vacios"), 0))},
+                {"label": "Product vacios", "value": _json_int(next((row["count"] for row in summary.get("quality_issue_rows", []) if row["label"] == "Product vacios"), 0))},
+                {"label": "Duplicados por ID", "value": _json_int(next((row["count"] for row in summary.get("quality_issue_rows", []) if row["label"] == "Duplicados por ID"), 0))},
+                {"label": "Duplicados por OrderID", "value": _json_int(next((row["count"] for row in summary.get("quality_issue_rows", []) if row["label"] == "Duplicados por OrderID"), 0))},
+                {"label": "Duplicados por Serial", "value": _json_int(next((row["count"] for row in summary.get("quality_issue_rows", []) if row["label"] == "Duplicados por Serial"), 0))},
+                {"label": "Registros excluidos", "value": float(summary.get("excluded_percentage") or 0), "unit": "%"},
+            ],
+            "financial": [
+                {"label": "Valor total inventario", "value": float(summary.get("total_inventory_value") or 0), "unit": "usd"},
+                {"label": "Valor stock libre", "value": float(summary.get("free_stock_value") or 0), "unit": "usd"},
+                {"label": "Valor aprovechable", "value": float(summary.get("potential_usable_value") or 0), "unit": "usd"},
+                {"label": "Valor de fabricacion", "value": float(summary.get("requires_manufacturing_value") or 0), "unit": "usd"},
+            ],
         },
         "set_status_counts": {
             str(key): _json_int(value) for key, value in (summary.get("set_status_counts") or {}).items()
@@ -348,8 +398,21 @@ def _build_summary_payload(
             str(key): _json_int(value) for key, value in (summary.get("match_type_counts") or {}).items()
         },
         "oldest_days_stored": _json_int(summary.get("oldest_days_stored")),
+        "average_days_stored": float(summary.get("average_days_stored") or 0),
         "free_stock_percentage": float(summary.get("free_stock_percentage") or 0),
         "inventory_reduction_opportunity_percentage": float(summary.get("inventory_reduction_opportunity_percentage") or 0),
+        "completable_over_total_percentage": float(summary.get("completable_over_total_percentage") or 0),
+        "manufacturing_dependency_percentage": float(summary.get("manufacturing_dependency_percentage") or 0),
+        "excluded_percentage": float(summary.get("excluded_percentage") or 0),
+        "automatic_eligibility_percentage": float(summary.get("automatic_eligibility_percentage") or 0),
+        "operational_quality_index": float(summary.get("operational_quality_index") or 0),
+        "inventory_utilization_percentage": float(summary.get("inventory_utilization_percentage") or 0),
+        "stock_free_coverage_percentage": float(summary.get("stock_free_coverage_percentage") or 0),
+        "total_inventory_value": float(summary.get("total_inventory_value") or 0),
+        "free_stock_value": float(summary.get("free_stock_value") or 0),
+        "potential_usable_value": float(summary.get("potential_usable_value") or 0),
+        "requires_manufacturing_value": float(summary.get("requires_manufacturing_value") or 0),
+        "reserved_gap_value": float(summary.get("reserved_gap_value") or 0),
         "top_oldest_free_stock": _rename_summary_records(
             summary.get("top_oldest_free_stock") or [],
             {
@@ -359,6 +422,7 @@ def _build_summary_payload(
                 "DaysStored": "days_stored",
                 "SetStatus": "set_status",
                 "SetStatusLabel": "set_status_label",
+                "InvoiceCost": "invoice_cost",
             },
         ),
         "top_requires_fabrication": _rename_summary_records(
@@ -369,12 +433,76 @@ def _build_summary_payload(
                 "Vehicle": "vehicle",
                 "Customer": "customer",
                 "DaysStored": "days_stored",
+                "InvoiceCost": "invoice_cost",
+            },
+        ),
+        "top_critical_products": _rename_summary_records(
+            summary.get("top_critical_products") or [],
+            {
+                "product": "product",
+                "records": "records",
+                "max_days": "max_days",
+                "total_value": "total_value",
             },
         ),
         "top_combinations": _rename_summary_records(
             summary.get("top_combinations") or [],
             {"combination": "combination", "count": "count"},
         ),
+        "aging_buckets": _rename_summary_records(
+            summary.get("aging_buckets") or [],
+            {"label": "label", "count": "count", "value": "value"},
+        ),
+        "resolution_mix": _rename_summary_records(
+            summary.get("resolution_mix") or [],
+            {"label": "label", "count": "count"},
+        ),
+        "quality_issue_rows": _rename_summary_records(
+            summary.get("quality_issue_rows") or [],
+            {"label": "label", "count": "count"},
+        ),
+        "charts": {
+            "composition": {
+                "title": "Composicion del inventario",
+                "note": _json_scalar((summary.get("chart_notes") or {}).get("composition")) or "",
+                "series": [
+                    {"label": key, "value": _json_int(value)}
+                    for key, value in (summary.get("set_status_counts") or {}).items()
+                ],
+            },
+            "resolution": {
+                "title": "Resolucion de pedidos incompletos",
+                "note": _json_scalar((summary.get("chart_notes") or {}).get("resolution")) or "",
+                "series": _rename_summary_records(summary.get("resolution_mix") or [], {"label": "label", "count": "count"}),
+            },
+            "aging": {
+                "title": "Antiguedad del inventario",
+                "note": _json_scalar((summary.get("chart_notes") or {}).get("aging")) or "",
+                "series": _rename_summary_records(summary.get("aging_buckets") or [], {"label": "label", "count": "count", "value": "value"}),
+            },
+            "pareto": {
+                "title": "Pareto de combinaciones",
+                "note": _json_scalar((summary.get("chart_notes") or {}).get("pareto")) or "",
+                "series": _rename_summary_records(summary.get("top_combinations") or [], {"combination": "label", "count": "count"}),
+            },
+            "critical_products": {
+                "title": "Productos criticos sin reserva",
+                "note": _json_scalar((summary.get("chart_notes") or {}).get("critical_products")) or "",
+                "series": _rename_summary_records(summary.get("top_critical_products") or [], {"product": "label", "max_days": "count", "total_value": "value", "records": "records"}),
+            },
+            "waterfall": {
+                "title": "Secuencia de decision sobre incompletos",
+                "note": _json_scalar((summary.get("chart_notes") or {}).get("waterfall")) or "",
+                "series": [
+                    {"label": "Incompletos totales", "count": _json_int(summary.get("incomplete_total"))},
+                    {"label": "Revision manual", "count": _json_int(next((item["count"] for item in summary.get("resolution_mix", []) if item["label"] == "Revision manual"), 0))},
+                    {"label": "Completable con Additional", "count": _json_int(next((item["count"] for item in summary.get("resolution_mix", []) if item["label"] == "Adicional compatible"), 0))},
+                    {"label": "Completable con Incomplete", "count": _json_int(next((item["count"] for item in summary.get("resolution_mix", []) if item["label"] == "Pedido incompleto compatible"), 0))},
+                    {"label": "Completable con stock libre", "count": _json_int(next((item["count"] for item in summary.get("resolution_mix", []) if item["label"] == "Stock libre compatible"), 0))},
+                    {"label": "Requiere fabricacion", "count": _json_int(summary.get("requires_fabrication_total"))},
+                ],
+            },
+        },
         "review_rows": _rename_summary_records(
             summary.get("review_rows") or [],
             {

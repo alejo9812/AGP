@@ -6,6 +6,15 @@ Subproyecto independiente para revisar inventario AGP como pagina estatica lista
 
 Todo el runtime del MVP vive dentro de `test/`. El subproyecto reutiliza el core Python ya existente para leer Excel, limpiar datos, aplicar reglas, generar recomendaciones y construir el PDF, pero la experiencia final publicada es `HTML + CSS + JS` sin backend.
 
+La version actual mantiene esta estructura visual:
+
+1. header ejecutivo
+2. KPIs y resumen narrativo
+3. visuales y metricas agrupadas
+4. tabla filtrable
+5. panel de detalle
+6. visor del PDF ejecutivo
+
 ## Que hace
 
 1. detecta el Excel mas reciente en `test/input/` y, si no hay archivo alli, usa el Excel de la raiz de `test/`
@@ -38,7 +47,9 @@ Estructura principal:
     "pdf_report": "./reports/informe_agp.pdf"
   },
   "default_active_record_key": "...",
-  "summary": { "...": "KPIs, conteos y listas ejecutivas" },
+  "summary": {
+    "...": "KPIs, listas ejecutivas, metricas agrupadas, charts y tablas resumen"
+  },
   "records": [{ "...": "filas enriquecidas del Excel" }]
 }
 ```
@@ -115,8 +126,9 @@ Desde dentro de `test/`:
 Opciones utiles:
 
 ```powershell
-.venv\Scripts\python.exe test\scripts\build_pruebas.py --file test\Mock_Data.xlsx
-.venv\Scripts\python.exe test\scripts\build_pruebas.py --target-root test
+.venv\Scripts\python.exe test\scripts\build_pruebas.py --file Mock_Data.xlsx
+cd test
+..\.venv\Scripts\python.exe scripts\build_pruebas.py --file Mock_Data.xlsx --target-root .
 ```
 
 ## Como abrir la pagina localmente
@@ -152,7 +164,11 @@ http://localhost:4174/
    - `test/data/agp_dataset.json`
    - `test/data/agp_dataset.js`
    - `test/reports/informe_agp.pdf`
-4. abre `test/index.html`
+4. si quieres previsualizar como sitio, levanta:
+   - `cd test`
+   - `..\.venv\Scripts\python.exe -m http.server 4174`
+   - abre `http://localhost:4174/`
+5. abre `test/index.html`
 
 ## Publicacion en GitHub Pages
 
@@ -168,6 +184,13 @@ Archivos publicados:
 - `data/agp_dataset.json`
 - `data/agp_dataset.js`
 - `reports/informe_agp.pdf`
+
+Pipeline de publicacion:
+
+1. regenerar artefactos dentro de `test/`
+2. confirmar cambios en `test/index.html`, `test/app.js`, `test/styles.css`, `test/data/` y `test/reports/`
+3. el workflow copia esos archivos a `pages/pruebas`
+4. GitHub Pages publica el resultado en `https://alejo9812.github.io/AGP/pruebas/`
 
 ## Legacy
 
@@ -186,3 +209,18 @@ Las pruebas cubren:
 - reglas de recomendacion
 - validacion de columnas
 - exportador estatico con generacion del dataset unico y el PDF
+
+Validacion minima recomendada despues de cada cambio visual:
+
+```powershell
+cd test
+..\.venv\Scripts\python.exe -m http.server 4174
+```
+
+Luego revisar:
+
+- KPIs superiores
+- visuales y leyendas
+- tabla principal en espanol
+- panel de detalle
+- visor del PDF

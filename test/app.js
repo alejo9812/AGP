@@ -20,17 +20,17 @@ const state = {
   activeKey: null,
 };
 
+const chartPalette = ["#1f6b63", "#2c8a7d", "#6bb7ad", "#b8d8d2", "#d9ebe8", "#8b3a2a", "#a65b16"];
+
 const tableColumns = [
-  { key: "order_id", label: "OrderID", sortable: true },
-  { key: "vehicle_display", label: "Vehicle", sortable: true },
-  { key: "product_display", label: "Product", sortable: true },
-  { key: "customer_display", label: "Customer", sortable: true },
-  { key: "days_stored", label: "DaysStored", sortable: true },
-  { key: "set_status_label", label: "SetStatus", sortable: true, badge: "status" },
-  { key: "availability_status", label: "availability_status", sortable: true, badge: "availability" },
-  { key: "recommendation", label: "recommendation", sortable: false },
-  { key: "candidate_match_orderid", label: "candidate_match_orderid", sortable: true },
-  { key: "decision_reason", label: "decision_reason", sortable: false },
+  { key: "order_id", label: "Pedido", sortable: true },
+  { key: "vehicle_display", label: "Vehiculo", sortable: true },
+  { key: "product_display", label: "Producto", sortable: true },
+  { key: "customer_display", label: "Cliente", sortable: true },
+  { key: "days_stored", label: "Dias en bodega", sortable: true },
+  { key: "set_status_label", label: "Estado del set", sortable: true, badge: "status" },
+  { key: "decision_label", label: "Decision", sortable: true, badge: "availability" },
+  { key: "candidate_match_type_label", label: "Tipo de match", sortable: true, badge: "match" },
 ];
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -40,12 +40,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
 async function loadDataset() {
   try {
-    const preloadedDataset = window.__AGP_PRUEBAS__?.dataset;
-    if (preloadedDataset) {
-      applyDataset(preloadedDataset);
-      return;
-    }
-
     const dataset = await loadPayload("./data/agp_dataset.json", "dataset");
     applyDataset(dataset);
   } catch (error) {
@@ -189,8 +183,10 @@ function renderAll() {
   ensureActiveRecord();
   renderHeader();
   renderSummary();
+  renderCharts();
   renderTable();
   renderDetail();
+  renderPdfSummary();
 }
 
 function renderHeader() {
@@ -198,6 +194,13 @@ function renderHeader() {
     return;
   }
 
+  const summary = state.summary;
+  const executiveHighlights = Array.isArray(summary.executive_highlights) ? summary.executive_highlights : [];
+  setText("executive-headline", summary.executive_headline || "Sin conclusion ejecutiva disponible.");
+  setText(
+    "executive-headline-note",
+    `Inventario total ${formatInteger(summary.kpis?.total_inventory)} | completables ${formatInteger(summary.kpis?.completables)} | fabricacion ${formatInteger(summary.kpis?.requieren_fabricacion)}`,
+  );
   document.getElementById("meta-source-file").textContent = state.summary.source_file_name ?? "-";
   document.getElementById("meta-generated-at").textContent = state.summary.generated_at_display ?? "-";
   document.getElementById("download-dataset").setAttribute(
@@ -208,38 +211,84 @@ function renderHeader() {
     "href",
     state.summary.download_paths?.pdf_report ?? "./reports/informe_agp.pdf",
   );
-  document.getElementById("summary-note").textContent = [
-    `${formatInteger(state.summary.kpis?.total_inventory)} registros analizados`,
-    `${formatInteger(state.summary.oldest_days_stored)} dias maximos en bodega`,
-    `${formatPercent(state.summary.free_stock_percentage)} de stock libre`,
-  ].join(" | ");
-}
 
-function renderSummary() {
-  const kpiGrid = document.getElementById("kpi-grid");
-  const kpis = state.summary?.kpis ?? {};
-  const cards = [
-    { label: "Total inventario", value: kpis.total_inventory, note: "Registros limpios evaluados" },
-    { label: "Complete", value: kpis.complete, note: "Disponibles completos en stock" },
-    { label: "Incomplete", value: kpis.incomplete, note: "Pendientes de completar" },
-    { label: "Additionals", value: kpis.additionals, note: "Posibles donantes en inventario" },
-    { label: "Stock libre", value: kpis.stock_libre, note: "Customer vacio, reservable con validacion" },
-    { label: "Completables", value: kpis.completables, note: "Tienen match sugerido" },
-    { label: "Requieren fabricacion", value: kpis.requieren_fabricacion, note: "No hay compatibilidad valida" },
-    { label: "Revision manual", value: kpis.revision_manual, note: "Datos con bloqueo o inconsistencia" },
-  ];
-
-  kpiGrid.innerHTML = cards
+  document.getElementById("header-impact").innerHTML = [
+    {
+      label: "Completables",
+      value: formatInteger(summary.kpis?.completables),
+      note: `${formatPercent(summary.inventory_reduction_opportunity_percentage)} sobre incompletos`,
+    },
+    {
+      label: "Stock libre",
+      value: formatInteger(summary.kpis?.stock_libre),
+      note: `${formatPercent(summary.free_stock_percentage)} del inventario`,
+    },
+    {
+      label: "Requieren fabricacion",
+      value: formatInteger(summary.kpis?.requieren_fabricacion),
+      note: `${formatPercent(summary.manufacturing_dependency_percentage)} de dependencia`,
+    },
+  ]
     .map(
       (card) => `
-        <article class="kpi-card">
-          <p>${escapeHtml(card.label)}</p>
-          <strong>${formatInteger(card.value)}</strong>
+        <article class="impact-card">
+          <span>${escapeHtml(card.label)}</span>
+          <strong>${escapeHtml(card.value)}</strong>
           <p>${escapeHtml(card.note)}</p>
         </article>
       `,
     )
     .join("");
+
+  if (!executiveHighlights.length) {
+    document.getElementById("header-impact").innerHTML = "";
+  }
+}
+
+function renderSummary() {
+  const summary = state.summary ?? {};
+  const kpis = summary.kpis ?? {};
+  const executiveCards = [
+    { label: "Inventario total", value: kpis.total_inventory, unit: "registros", note: "Base evaluada por el motor." },
+    { label: "Pedidos incompletos", value: kpis.incomplete, unit: "registros", note: "Universo que requiere decision." },
+    { label: "Pedidos completables", value: kpis.completables, unit: "registros", note: "Oportunidad inmediata con inventario." },
+    { label: "Requieren fabricacion", value: kpis.requieren_fabricacion, unit: "registros", note: "No se encontro match compatible." },
+    { label: "Stock libre", value: kpis.stock_libre, unit: "registros", note: "Reservable con validacion comercial." },
+    { label: "Antiguedad maxima", value: kpis.antiguedad_maxima, unit: "dias", note: "Mayor permanencia detectada." },
+  ];
+
+  setText(
+    "summary-note",
+    [
+      `${formatInteger(kpis.total_inventory)} registros analizados`,
+      `${formatPercent(summary.completable_over_total_percentage)} del total es recuperable sin fabricar`,
+      `${formatPercent(summary.excluded_percentage)} excluido por revision manual`,
+    ].join(" | "),
+  );
+  setText("spotlight-text", summary.executive_headline || "No hay lectura ejecutiva disponible para este lote.");
+
+  document.getElementById("highlight-grid").innerHTML = (summary.executive_highlights ?? [])
+    .map(
+      (item) => `
+        <article class="highlight-card">
+          <span>${escapeHtml(item.title ?? "Hallazgo")}</span>
+          <p>${escapeHtml(item.text ?? "-")}</p>
+        </article>
+      `,
+    )
+    .join("");
+
+  document.getElementById("narrative-list").innerHTML = [
+    `La pagina, el JSON descargable y el PDF consumen el mismo dataset generado en <code>test/</code>.`,
+    `Se analizan ${formatInteger(kpis.total_inventory)} registros y se prioriza inventario con mayor antiguedad en bodega.`,
+    `${formatInteger(kpis.revision_manual)} registros quedaron fuera de agrupacion automatica por calidad de datos o reglas de bloqueo.`,
+    `${formatInteger(kpis.additionals)} registros Additional siguen visibles en la tabla y entran como donantes antes que otros incompletos.`,
+  ]
+    .map((item) => `<li>${item}</li>`)
+    .join("");
+
+  document.getElementById("kpi-grid").innerHTML = executiveCards.map(renderKpiCard).join("");
+  document.getElementById("metric-groups").innerHTML = buildMetricGroups(summary.kpi_groups ?? {});
 }
 
 function renderTable() {
@@ -341,6 +390,9 @@ function renderDetail() {
     document.getElementById("detail-title").textContent = "Selecciona una fila";
     document.getElementById("detail-subtitle").textContent = "Haz clic en una fila de la tabla para revisar su decision y compatibilidades.";
     document.getElementById("detail-callout").textContent = "Sin registro activo.";
+    document.getElementById("table-detail-title").textContent = "Selecciona una fila";
+    document.getElementById("table-detail-subtitle").textContent = "Haz clic en una fila de la tabla para revisar su decision y compatibilidades.";
+    document.getElementById("table-detail-callout").textContent = "Sin registro activo.";
     document.getElementById("detail-decision").innerHTML = "";
     document.getElementById("detail-compatibility").innerHTML = "No hay compatibilidades para mostrar.";
     document.getElementById("detail-compatibility").classList.add("empty-state");
@@ -350,27 +402,38 @@ function renderDetail() {
 
   document.getElementById("detail-title").textContent = `${record.order_id ?? "Sin OrderID"} | ${record.vehicle_display}`;
   document.getElementById("detail-subtitle").textContent = `${record.product_display} | ${record.customer_display}`;
+  document.getElementById("table-detail-title").textContent = `${record.order_id ?? "Sin OrderID"} | ${record.vehicle_display}`;
+  document.getElementById("table-detail-subtitle").textContent = `${record.product_display} | ${record.customer_display}`;
 
   const callout = document.getElementById("detail-callout");
   callout.className = "detail-callout";
   callout.textContent = buildCalloutText(record);
-  if (record.requires_fabrication) {
+  const stripCallout = document.getElementById("table-detail-callout");
+  stripCallout.className = "detail-callout selected-strip-callout";
+  stripCallout.textContent = buildCalloutText(record);
+  if (record.should_manufacture || record.requires_fabrication) {
     callout.classList.add("is-danger");
-  } else if (record.needs_manual_review || record.candidate_source === "free_stock") {
+    stripCallout.classList.add("is-danger");
+  } else if (record.requires_manual_review || record.needs_manual_review || record.candidate_source === "free_stock") {
     callout.classList.add("is-warning");
+    stripCallout.classList.add("is-warning");
   } else {
     callout.classList.add("is-success");
+    stripCallout.classList.add("is-success");
   }
 
   document.getElementById("detail-decision").innerHTML = renderDetailList([
-    ["availability_status", record.availability_status],
-    ["recommendation", record.recommendation],
-    ["decision_reason", record.decision_reason],
-    ["candidate_match_orderid", record.candidate_match_orderid ?? "-"],
-    ["candidate_source", record.candidate_source_label ?? record.candidate_source ?? "-"],
-    ["validacion", record.primary_match_validation || "-"],
-    ["DaysStored", formatInteger(record.days_stored)],
-    ["SetStatus", record.set_status_label ?? record.set_status ?? "-"],
+    ["Decision", record.decision_label || record.availability_status || "-"],
+    ["Recomendacion", record.recommendation || "-"],
+    ["Motivo", record.decision_reason || "-"],
+    ["Pedido candidato", record.candidate_match_orderid ?? "-"],
+    ["Tipo de match", record.candidate_match_type_label ?? record.candidate_source_label ?? "-"],
+    ["Validacion", record.primary_match_validation || "-"],
+    ["Prioridad", formatPriority(record.priority_score)],
+    ["Dias en bodega", formatInteger(record.days_stored)],
+    ["Estado del set", record.set_status_label ?? record.set_status ?? "-"],
+    ["Revision manual", record.requires_manual_review || record.needs_manual_review ? "Si" : "No"],
+    ["Requiere fabricacion", record.should_manufacture || record.requires_fabrication ? "Si" : "No"],
   ]);
 
   document.getElementById("detail-original").innerHTML = renderDetailList([
@@ -426,7 +489,7 @@ function renderCompatibility(record) {
 
     <div>
       <h5>Mejor candidato</h5>
-      ${renderCandidateList(bestCandidate ? [bestCandidate] : [])}
+      ${renderCandidateList(bestCandidate ? [bestCandidate] : [], true)}
     </div>
 
     <div>
@@ -446,7 +509,7 @@ function renderCompatibility(record) {
   `;
 }
 
-function renderCandidateList(candidates) {
+function renderCandidateList(candidates, isPrimary = false) {
   if (!candidates.length) {
     return '<div class="empty-state">Sin candidatos en este grupo.</div>';
   }
@@ -456,8 +519,11 @@ function renderCandidateList(candidates) {
       ${candidates
         .map(
           (candidate) => `
-            <li>
-              <h5>${escapeHtml(candidate.order_id ?? "-")} | ${escapeHtml(candidate.customer_display ?? "-")}</h5>
+            <li ${isPrimary ? 'class="candidate-primary"' : ""}>
+              <div class="candidate-head">
+                <h5>${escapeHtml(candidate.order_id ?? "-")} | ${escapeHtml(candidate.customer_display ?? "-")}</h5>
+                <span class="badge badge-match">${escapeHtml(candidate.candidate_source_label ?? candidate.candidate_source ?? "-")}</span>
+              </div>
               <p>${escapeHtml(candidate.vehicle ?? "-")} | ${escapeHtml(candidate.product ?? "-")} | ${formatInteger(candidate.days_stored)} dias</p>
               <p>${escapeHtml(candidate.explanation ?? "")}</p>
             </li>
@@ -476,6 +542,9 @@ function renderCell(record, column) {
   if (column.badge === "availability") {
     return `<span class="badge ${buildAvailabilityClass(value)}">${escapeHtml(value ?? "-")}</span>`;
   }
+  if (column.badge === "match") {
+    return `<span class="badge badge-match">${escapeHtml(value ?? "-")}</span>`;
+  }
   if (column.key === "days_stored") {
     return formatInteger(value);
   }
@@ -492,6 +561,8 @@ function applyFiltersAndSorting() {
         record.product_display,
         record.customer_display,
         record.serial,
+        record.decision_label,
+        record.candidate_match_type_label,
         record.recommendation,
         record.decision_reason,
       ]
@@ -507,7 +578,7 @@ function applyFiltersAndSorting() {
         (state.filters.setStatus === "all" || (record.set_status_label ?? record.set_status) === state.filters.setStatus) &&
         (!state.filters.freeStockOnly || record.is_free_stock) &&
         (!state.filters.completableOnly || record.completable) &&
-        (!state.filters.fabricationOnly || record.requires_fabrication)
+        (!state.filters.fabricationOnly || record.should_manufacture || record.requires_fabrication)
       );
     })
     .sort((left, right) => compareRecords(left, right, state.sort));
@@ -516,6 +587,237 @@ function applyFiltersAndSorting() {
   if (state.page > totalPages) {
     state.page = totalPages;
   }
+}
+
+function renderCharts() {
+  const charts = state.summary?.charts ?? {};
+  renderSegmentChart("chart-composition", charts.composition?.series ?? []);
+  renderDonutChart("chart-resolution", charts.resolution?.series ?? []);
+  renderBarChart("chart-aging", charts.aging?.series ?? [], {
+    labelKey: "label",
+    valueKey: "count",
+    meta: (item) => `${formatCurrency(item.value)} inmovilizados`,
+  });
+  renderWaterfallChart("chart-waterfall", charts.waterfall?.series ?? []);
+  renderBarChart("chart-pareto", charts.pareto?.series ?? [], {
+    labelKey: "label",
+    valueKey: "count",
+  });
+  renderBarChart("chart-critical-products", charts.critical_products?.series ?? [], {
+    labelKey: "label",
+    valueKey: "count",
+    meta: (item) => `${formatCurrency(item.value)} | ${formatInteger(item.records)} registros`,
+  });
+
+  setText("note-composition", charts.composition?.note || "");
+  setText("note-resolution", charts.resolution?.note || "");
+  setText("note-aging", charts.aging?.note || "");
+  setText("note-waterfall", charts.waterfall?.note || "");
+  setText("note-pareto", charts.pareto?.note || "");
+  setText("note-critical-products", charts.critical_products?.note || "");
+}
+
+function renderSegmentChart(containerId, series) {
+  const container = document.getElementById(containerId);
+  const cleanSeries = Array.isArray(series) ? series.filter((item) => Number(item?.value) > 0) : [];
+
+  if (!cleanSeries.length) {
+    container.innerHTML = '<div class="empty-state">Sin datos para visualizar.</div>';
+    return;
+  }
+
+  const total = cleanSeries.reduce((sum, item) => sum + (Number(item.value) || 0), 0);
+  const segments = cleanSeries
+    .map((item, index) => {
+      const value = Number(item.value) || 0;
+      const percentage = total ? (value / total) * 100 : 0;
+      return `<span class="segment" style="width:${percentage}%; background:${chartPalette[index % chartPalette.length]};"></span>`;
+    })
+    .join("");
+
+  const legend = cleanSeries
+    .map(
+      (item, index) => `
+        <li>
+          <span class="legend-dot" style="background:${chartPalette[index % chartPalette.length]};"></span>
+          <span>${escapeHtml(item.label ?? "-")}</span>
+          <strong>${formatInteger(item.value)}</strong>
+        </li>
+      `,
+    )
+    .join("");
+
+  container.innerHTML = `
+    <div class="segment-bar">${segments}</div>
+    <ul class="chart-legend">${legend}</ul>
+  `;
+}
+
+function renderDonutChart(containerId, series) {
+  const container = document.getElementById(containerId);
+  const cleanSeries = Array.isArray(series) ? series.filter((item) => Number(item?.count) > 0) : [];
+
+  if (!cleanSeries.length) {
+    container.innerHTML = '<div class="empty-state">Sin resoluciones para visualizar.</div>';
+    return;
+  }
+
+  const total = cleanSeries.reduce((sum, item) => sum + (Number(item.count) || 0), 0);
+  const gradientStops = [];
+  let cursor = 0;
+  cleanSeries.forEach((item, index) => {
+    const value = Number(item.count) || 0;
+    const percentage = total ? (value / total) * 100 : 0;
+    const nextCursor = cursor + percentage;
+    const color = chartPalette[index % chartPalette.length];
+    gradientStops.push(`${color} ${cursor}% ${nextCursor}%`);
+    cursor = nextCursor;
+  });
+
+  const legend = cleanSeries
+    .map(
+      (item, index) => `
+        <li>
+          <span class="legend-dot" style="background:${chartPalette[index % chartPalette.length]};"></span>
+          <span>${escapeHtml(item.label ?? "-")}</span>
+          <strong>${formatInteger(item.count)}</strong>
+        </li>
+      `,
+    )
+    .join("");
+
+  container.innerHTML = `
+    <div class="donut-layout">
+      <div class="donut-chart" style="background:conic-gradient(${gradientStops.join(", ")});">
+        <div class="donut-hole">
+          <strong>${formatInteger(total)}</strong>
+          <span>casos</span>
+        </div>
+      </div>
+      <ul class="chart-legend">${legend}</ul>
+    </div>
+  `;
+}
+
+function renderBarChart(containerId, series, options = {}) {
+  const container = document.getElementById(containerId);
+  const {
+    labelKey = "label",
+    valueKey = "count",
+    meta = null,
+  } = options;
+  const cleanSeries = Array.isArray(series) ? series.filter((item) => Number(item?.[valueKey]) > 0) : [];
+
+  if (!cleanSeries.length) {
+    container.innerHTML = '<div class="empty-state">Sin datos para visualizar.</div>';
+    return;
+  }
+
+  const maxValue = Math.max(...cleanSeries.map((item) => Number(item[valueKey]) || 0), 1);
+  container.innerHTML = cleanSeries
+    .slice(0, 8)
+    .map((item, index) => {
+      const value = Number(item[valueKey]) || 0;
+      const width = (value / maxValue) * 100;
+      return `
+        <div class="bar-row">
+          <div class="bar-label">
+            <strong>${escapeHtml(item[labelKey] ?? "-")}</strong>
+            ${meta ? `<span>${escapeHtml(meta(item))}</span>` : ""}
+          </div>
+          <div class="bar-track">
+            <span class="bar-fill" style="width:${width}%; background:${chartPalette[index % chartPalette.length]};"></span>
+          </div>
+          <div class="bar-value">${formatInteger(value)}</div>
+        </div>
+      `;
+    })
+    .join("");
+}
+
+function renderWaterfallChart(containerId, series) {
+  const container = document.getElementById(containerId);
+  const cleanSeries = Array.isArray(series) ? series : [];
+
+  if (!cleanSeries.length) {
+    container.innerHTML = '<div class="empty-state">Sin datos para visualizar.</div>';
+    return;
+  }
+
+  container.innerHTML = `
+    <div class="waterfall-grid">
+      ${cleanSeries
+        .map(
+          (item, index) => `
+            <div class="waterfall-step">
+              <span>${index + 1}</span>
+              <strong>${formatInteger(item.count)}</strong>
+              <p>${escapeHtml(item.label ?? "-")}</p>
+            </div>
+          `,
+        )
+        .join("")}
+    </div>
+  `;
+}
+
+function renderPdfSummary() {
+  const summary = state.summary ?? {};
+  const list = [
+    `Portada ejecutiva con KPIs principales, archivo analizado y lectura de negocio.`,
+    `Resumen ejecutivo con ${formatPercent(summary.inventory_reduction_opportunity_percentage)} de potencial de resolucion sobre pedidos incompletos.`,
+    `Seccion de calidad de datos con exclusiones, duplicados y causas de revision manual.`,
+    `Bloque de salud del inventario con antiguedad, composicion y valor inmovilizado.`,
+    `Anexo con casos de revision manual, top combinaciones y recomendaciones detalladas.`,
+  ];
+  document.getElementById("pdf-summary-list").innerHTML = list.map((item) => `<li>${item}</li>`).join("");
+}
+
+function renderKpiCard(card) {
+  return `
+    <article class="kpi-card">
+      <p>${escapeHtml(card.label)}</p>
+      <strong>${formatMetricValue(card.value, card.unit)}</strong>
+      <p>${escapeHtml(card.note)}</p>
+    </article>
+  `;
+}
+
+function buildMetricGroups(groups) {
+  const groupConfig = [
+    { key: "operational", title: "KPIs operativos", note: "Seguimiento del motor de agrupamiento." },
+    { key: "quality", title: "Calidad de datos", note: "Bloqueos y exclusiones del analisis." },
+    { key: "financial", title: "KPIs financieros", note: "Lectura economica aproximada con InvoiceCost." },
+  ];
+
+  return groupConfig
+    .map((group) => {
+      const items = Array.isArray(groups[group.key]) ? groups[group.key] : [];
+      if (!items.length) {
+        return "";
+      }
+      return `
+        <section class="metric-group data-panel">
+          <div class="subsection-heading">
+            <h3>${escapeHtml(group.title)}</h3>
+            <p>${escapeHtml(group.note)}</p>
+          </div>
+          <div class="metric-card-grid">
+            ${items
+              .map(
+                (item) => `
+                  <article class="metric-card">
+                    <span>${escapeHtml(item.label ?? "-")}</span>
+                    <strong>${formatMetricValue(item.value, item.unit)}</strong>
+                  </article>
+                `,
+              )
+              .join("")}
+          </div>
+        </section>
+      `;
+    })
+    .join("");
 }
 
 function populateFilters() {
@@ -590,7 +892,7 @@ function compareRecords(left, right, sortState) {
   const leftValue = left[sortState.key];
   const rightValue = right[sortState.key];
 
-  if (sortState.key === "days_stored") {
+  if (["days_stored", "priority_score"].includes(sortState.key)) {
     return ((Number(leftValue) || 0) - (Number(rightValue) || 0)) * direction;
   }
 
@@ -598,20 +900,20 @@ function compareRecords(left, right, sortState) {
 }
 
 function buildCalloutText(record) {
-  if (record.requires_fabrication) {
-    return "Accion sugerida: fabricar. No se encontro donor compatible por Vehicle + Product.";
+  if (record.should_manufacture || record.requires_fabrication) {
+    return "Accion sugerida: fabricar. No se encontro un donante compatible con las reglas de negocio.";
   }
-  if (record.needs_manual_review) {
+  if (record.requires_manual_review || record.needs_manual_review) {
     return "Accion sugerida: revisar manualmente. Hay datos bloqueantes o inconsistentes.";
   }
   if (record.candidate_source === "additional") {
-    return `Accion sugerida: reservar adicional ${record.candidate_match_orderid ?? "compatible"}.`;
+    return `Accion sugerida: reservar primero el Additional ${record.candidate_match_orderid ?? "compatible"}.`;
   }
   if (record.candidate_source === "incomplete") {
-    return `Accion sugerida: reservar pedido incompleto ${record.candidate_match_orderid ?? "compatible"}.`;
+    return `Accion sugerida: reservar el pedido incompleto ${record.candidate_match_orderid ?? "compatible"}.`;
   }
   if (record.candidate_source === "free_stock") {
-    return `Accion sugerida: validar y reservar ${record.candidate_match_orderid ?? "stock libre"}.`;
+    return `Accion sugerida: validar comercialmente y reservar ${record.candidate_match_orderid ?? "stock libre"}.`;
   }
   if (record.completable) {
     return `Accion sugerida: reservar ${record.candidate_match_orderid ?? "el mejor candidato"} para completar el pedido.`;
@@ -659,6 +961,24 @@ function formatInteger(value) {
   return new Intl.NumberFormat("es-CO", { maximumFractionDigits: 0 }).format(Number(value) || 0);
 }
 
+function formatMetricValue(value, unit) {
+  if (unit === "%") {
+    return formatPercent(value);
+  }
+  if (unit === "usd") {
+    return formatCurrency(value);
+  }
+  const formatted = Number.isFinite(Number(value)) ? formatInteger(value) : String(value ?? "-");
+  return unit && unit !== "registros" ? `${formatted} ${unit}` : formatted;
+}
+
+function formatPriority(value) {
+  if (value === null || value === undefined || value === "" || Number.isNaN(Number(value))) {
+    return "-";
+  }
+  return `P${formatInteger(value)}`;
+}
+
 function formatPercent(value) {
   return `${new Intl.NumberFormat("es-CO", { maximumFractionDigits: 2 }).format(Number(value) || 0)}%`;
 }
@@ -682,6 +1002,13 @@ function escapeHtml(value) {
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#39;");
+}
+
+function setText(elementId, value) {
+  const element = document.getElementById(elementId);
+  if (element) {
+    element.textContent = value ?? "";
+  }
 }
 
 function renderFatalError(error) {

@@ -3,10 +3,10 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>AGP Pruebas | Inventario estatico</title>
+    <title>AGP Pruebas | Revision ejecutiva de inventario</title>
     <meta
       name="description"
-      content="MVP estatico para revisar inventario AGP, reglas de compatibilidad, KPIs ejecutivos y el informe PDF en una sola pagina."
+      content="Tablero estatico de AGP para revisar inventario, oportunidades de agrupamiento, KPIs ejecutivos y el informe PDF en una sola pagina."
     />
     <link rel="stylesheet" href="./styles.css" />
   </head>
@@ -16,15 +16,23 @@
         <div class="page-inner header-grid">
           <div class="header-copy">
             <p class="eyebrow">AGP Warehouse Grouping | Pruebas</p>
-            <h1>Inventario procesado, tabla operativa y reporte ejecutivo en una sola vista.</h1>
+            <h1>Revision ejecutiva del inventario inmovilizado y de las oportunidades de agrupamiento.</h1>
             <p class="header-text">
-              Subproyecto independiente en <code>test/</code> para GitHub Pages. Usa el Excel de inventario, genera JSON
-              y PDF, y deja la revision comercial lista para compartir.
+              Subproyecto independiente en <code>test/</code> publicado en <code>/AGP/pruebas/</code>. La pagina y las
+              descargas consumen exactamente el mismo dataset generado por el pipeline local.
             </p>
+
+            <div class="executive-headline-card">
+              <p class="section-eyebrow">Lectura ejecutiva</p>
+              <h2 id="executive-headline">Cargando conclusion principal...</h2>
+              <p id="executive-headline-note" class="header-text compact">
+                Cargando hallazgos principales del lote.
+              </p>
+            </div>
 
             <dl class="header-meta">
               <div>
-                <dt>Fuente</dt>
+                <dt>Archivo fuente</dt>
                 <dd id="meta-source-file">Cargando...</dd>
               </div>
               <div>
@@ -32,14 +40,17 @@
                 <dd id="meta-generated-at">Cargando...</dd>
               </div>
               <div>
-                <dt>Ruta objetivo</dt>
+                <dt>Publicacion</dt>
                 <dd>/AGP/pruebas</dd>
               </div>
             </dl>
 
+            <div class="header-impact" id="header-impact"></div>
+
             <div class="header-actions">
               <a class="button button-primary" id="download-pdf" href="./reports/informe_agp.pdf" download>Descargar PDF</a>
               <a class="button button-secondary" id="download-dataset" href="./data/agp_dataset.json" download>Descargar dataset</a>
+              <a class="button button-secondary" href="./reports/informe_agp.pdf" target="_blank" rel="noreferrer">Abrir PDF</a>
             </div>
           </div>
 
@@ -48,7 +59,7 @@
               alt="Pasillo de bodega industrial con inventario en estanterias"
               src="https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?auto=format&fit=crop&w=1400&q=80"
             />
-            <figcaption>Vista de control para decision comercial y revision ejecutiva.</figcaption>
+            <figcaption>Vista preparada para lectura comercial, operativa y gerencial.</figcaption>
           </figure>
         </div>
       </header>
@@ -59,11 +70,97 @@
             <div class="section-heading">
               <div>
                 <p class="section-eyebrow">Resumen ejecutivo</p>
-                <h2>KPIs del lote procesado</h2>
+                <h2>KPIs y narrativa del lote procesado</h2>
               </div>
               <p class="section-note" id="summary-note">Cargando indicadores...</p>
             </div>
-            <div class="kpi-grid" id="kpi-grid"></div>
+
+            <div class="executive-strip">
+              <section class="data-panel spotlight-panel">
+                <div class="panel-heading">
+                  <p class="section-eyebrow">Mensaje clave</p>
+                  <h3>Que deberia mirar primero un gerente comercial</h3>
+                </div>
+                <p class="spotlight-text" id="spotlight-text">Cargando enfoque ejecutivo...</p>
+                <div class="highlight-grid" id="highlight-grid"></div>
+              </section>
+
+              <section class="data-panel narrative-panel">
+                <div class="panel-heading">
+                  <p class="section-eyebrow">Consistencia de datos</p>
+                  <h3>Misma base para pagina y descargas</h3>
+                </div>
+                <ul class="narrative-list" id="narrative-list">
+                  <li>Cargando notas del dataset...</li>
+                </ul>
+              </section>
+            </div>
+
+            <div class="metric-section">
+              <div class="subsection-heading">
+                <h3>KPIs ejecutivos</h3>
+                <p>Lectura de 30 segundos para direccion y gerencia.</p>
+              </div>
+              <div class="kpi-grid" id="kpi-grid"></div>
+            </div>
+
+            <div class="metric-groups" id="metric-groups"></div>
+
+            <div class="chart-grid">
+              <article class="chart-card">
+                <div class="panel-heading">
+                  <p class="section-eyebrow">Visual 1</p>
+                  <h3>Composicion del inventario</h3>
+                </div>
+                <div id="chart-composition" class="chart-body"></div>
+                <p id="note-composition" class="chart-note"></p>
+              </article>
+
+              <article class="chart-card">
+                <div class="panel-heading">
+                  <p class="section-eyebrow">Visual 2</p>
+                  <h3>Resolucion de pedidos incompletos</h3>
+                </div>
+                <div id="chart-resolution" class="chart-body"></div>
+                <p id="note-resolution" class="chart-note"></p>
+              </article>
+
+              <article class="chart-card">
+                <div class="panel-heading">
+                  <p class="section-eyebrow">Visual 3</p>
+                  <h3>Antiguedad del inventario</h3>
+                </div>
+                <div id="chart-aging" class="chart-body"></div>
+                <p id="note-aging" class="chart-note"></p>
+              </article>
+
+              <article class="chart-card">
+                <div class="panel-heading">
+                  <p class="section-eyebrow">Visual 4</p>
+                  <h3>Secuencia de decision</h3>
+                </div>
+                <div id="chart-waterfall" class="chart-body"></div>
+                <p id="note-waterfall" class="chart-note"></p>
+              </article>
+
+              <article class="chart-card">
+                <div class="panel-heading">
+                  <p class="section-eyebrow">Visual 5</p>
+                  <h3>Pareto de combinaciones</h3>
+                </div>
+                <div id="chart-pareto" class="chart-body"></div>
+                <p id="note-pareto" class="chart-note"></p>
+              </article>
+
+              <article class="chart-card">
+                <div class="panel-heading">
+                  <p class="section-eyebrow">Visual 6</p>
+                  <h3>Productos criticos sin reserva</h3>
+                </div>
+                <div id="chart-critical-products" class="chart-body"></div>
+                <p id="note-critical-products" class="chart-note"></p>
+              </article>
+            </div>
           </div>
         </section>
 
@@ -72,7 +169,7 @@
             <div class="section-heading">
               <div>
                 <p class="section-eyebrow">Analisis principal</p>
-                <h2>Tabla filtrable con detalle por registro</h2>
+                <h2>Tabla filtrable con panel de detalle</h2>
               </div>
               <div class="section-note" id="result-count">0 registros visibles</div>
             </div>
@@ -80,27 +177,27 @@
             <section class="toolbar-panel" aria-label="Controles de la tabla">
               <div class="toolbar-grid">
                 <label class="field field-search">
-                  <span>Busqueda global</span>
-                  <input id="search-input" type="search" placeholder="OrderID, Vehicle, Product, Customer, Serial" />
+                  <span>Buscador principal</span>
+                  <input id="search-input" type="search" placeholder="Pedido, vehiculo, producto, cliente o serial" />
                 </label>
 
                 <label class="field">
-                  <span>Vehicle</span>
+                  <span>Vehiculo</span>
                   <select id="vehicle-filter"></select>
                 </label>
 
                 <label class="field">
-                  <span>Product</span>
+                  <span>Producto</span>
                   <select id="product-filter"></select>
                 </label>
 
                 <label class="field">
-                  <span>Customer</span>
+                  <span>Cliente</span>
                   <select id="customer-filter"></select>
                 </label>
 
                 <label class="field">
-                  <span>SetStatus</span>
+                  <span>Estado del set</span>
                   <select id="status-filter"></select>
                 </label>
 
@@ -133,6 +230,15 @@
                   </select>
                 </label>
               </div>
+            </section>
+
+            <section class="data-panel selected-summary-strip" aria-label="Resumen del registro seleccionado">
+              <div class="selected-strip-main">
+                <p class="section-eyebrow">Detalle seleccionado</p>
+                <h3 id="table-detail-title">Selecciona una fila</h3>
+                <p id="table-detail-subtitle">Haz clic en una fila de la tabla para revisar su decision y compatibilidades.</p>
+              </div>
+              <div id="table-detail-callout" class="detail-callout selected-strip-callout">Sin registro activo.</div>
             </section>
 
             <div class="analysis-grid">
@@ -179,7 +285,7 @@
                 </section>
 
                 <section class="detail-section">
-                  <h4>Compatibilidad detectada</h4>
+                  <h4>Compatibilidades detectadas</h4>
                   <div id="detail-compatibility" class="detail-compatibility empty-state">
                     No hay compatibilidades para mostrar.
                   </div>
@@ -202,6 +308,18 @@
                 <h2>Visor del PDF ejecutivo</h2>
               </div>
               <a class="button button-secondary" href="./reports/informe_agp.pdf" download>Descargar copia</a>
+            </div>
+
+            <div class="pdf-summary-grid">
+              <section class="data-panel pdf-summary-panel">
+                <div class="panel-heading">
+                  <p class="section-eyebrow">Que contiene</p>
+                  <h3>Lectura corta y luego detalle tecnico</h3>
+                </div>
+                <ul class="narrative-list" id="pdf-summary-list">
+                  <li>Cargando resumen del informe...</li>
+                </ul>
+              </section>
             </div>
 
             <div class="pdf-frame">
