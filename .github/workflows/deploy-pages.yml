@@ -52,7 +52,8 @@ jobs:
           AGP_WEB_BASE: /AGP/app/
 
       - name: Validate static test MVP build
-        run: python test/scripts/build_pruebas.py --file test/Mock_Data.xlsx --target-root test_build_validation
+        working-directory: test
+        run: python scripts/build_pruebas.py --file Mock_Data.xlsx --target-root ../test_build_validation
 
       - name: Compose Pages artifact
         run: |
